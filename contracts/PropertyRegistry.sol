@@ -3,7 +3,7 @@ pragma solidity ^0.4.24;
 import 'openzeppelin-solidity/contracts/token/ERC721/ERC721Basic.sol';
 
 contract PropertyRegistry {
-  address public property;
+  ERC721Basic public property;
   mapping(uint256 => Data) public stayData;
 
   struct Data {
