@@ -21,9 +21,19 @@ contract('PropertyRegistry', (accounts) => {
         await property.createProperty();
     }
 
-    const requestBooking = async () => {
-        await registry.registerProperty(1, 100);
-        await registry.request(1, nextWeek, weekAfterThat, {from: bob});
+    const registerProperty = async (tokenId, cost) => {
+        await newRegistry();
+        await registry.registerProperty(tokenId, cost);
+    }
+
+    const requestBooking = async (tokenId, checkIn, checkOut, acc) => {
+        await registerProperty(tokenId, 100);
+        await registry.request(tokenId, checkIn, checkOut, {from: acc});
+    }
+
+    const requestApprovedBooking = async (tokenId, checkIn, checkOut, acc) => {
+        await requestBooking(tokenId, checkIn, checkOut, acc);
+        await registry.approveRequest(tokenId, true);
     }
 
     const sevenDaysAfter = (time) => {
@@ -65,8 +75,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should allow anyone to make a booking request with valid dates", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
+        await registerProperty(1, 100);
         try {
             await registry.request(1, nextWeek, weekAfterThat, {from: bob})
             assert(true, "Bob could submit a booking request.");
@@ -76,8 +85,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow anyone to make a booking request if check out is before check in", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
+        await registerProperty(1, 100);
         try {
             await registry.request(1, nextWeek, currentTime, {from: bob})
             assert(false, "Bob could submit a booking request.");
@@ -87,8 +95,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow anyone to make a booking request if there is already a request in progress", async () => {
-        await newRegistry();
-        await requestBooking();
+        await requestBooking(1, nextWeek, weekAfterThat, bob);
         try {
             await registry.request(1, nextWeek, weekAfterThat, {from: eve});
             assert(false, "Eve could submit a booking request.");
@@ -98,26 +105,20 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should allow alice to approve bob's request", async () => {
-        await newRegistry();
-        await requestBooking();
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, nextWeek, weekAfterThat, bob);
         const request = await registry.requests.call(1);
         assert(request[3] === true, "Alice could approve bob's request.");
     });
 
     it("should allow alice to reject bob's request", async () => {
-        await newRegistry();
-        await requestBooking();
+        await requestBooking(1, nextWeek, weekAfterThat, bob);
         await registry.approveRequest(1, false);
         const request = await registry.requests.call(1);
         assert(request[0].toString() === "0", "Alice rejected bob's request.");
     });
 
     it("should allow bob to check in if check-in time has begun and the request is approved", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        await registry.request(1, currentTime, nextWeek, {from: bob})
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, currentTime, nextWeek, bob)
         try {
             await registry.checkIn(1, {from: bob});
             assert(true, "Bob could check in");
@@ -128,9 +129,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow bob to check in if check-in time has not begun", async () => {
-        await newRegistry();
-        await requestBooking();
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, nextWeek, weekAfterThat, bob);
         try {
             await registry.checkIn(1, {from: bob});
             assert(false, "Bob could check in");
@@ -140,8 +139,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow bob to check in if the request is not approved", async () => {
-        await newRegistry();
-        await requestBooking();
+        await requestBooking(1, nextWeek, weekAfterThat, bob);
         await registry.approveRequest(1, false);
         try {
             await registry.checkIn(1, {from: bob});
@@ -152,10 +150,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow eve to check in at any time", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        await registry.request(1, currentTime, nextWeek, {from: bob})
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, currentTime, nextWeek, bob);
         try {
             await registry.checkIn(1, {from: eve});
             assert(false, "Eve could check in");
@@ -165,10 +160,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should allow bob to check out", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        await registry.request(1, currentTime, nextWeek, {from: bob})
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, currentTime, nextWeek, bob);
         await registry.checkIn(1, {from: bob});
         try {
             await registry.checkOut(1, {from: bob});
@@ -179,10 +171,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should not allow eve to check out", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        await registry.request(1, currentTime, nextWeek, {from: bob})
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, currentTime, nextWeek, bob)
         await registry.checkIn(1, {from: bob});
         try {
             await registry.checkOut(1, {from: eve});
@@ -193,10 +182,7 @@ contract('PropertyRegistry', (accounts) => {
     });
 
     it("should allow eve to submit a request after bob has checked out", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        await registry.request(1, currentTime, nextWeek, {from: bob})
-        await registry.approveRequest(1, true);
+        await requestApprovedBooking(1, currentTime, nextWeek, bob)
         await registry.checkIn(1, {from: bob});
         await registry.checkOut(1, {from: bob});
         try {
