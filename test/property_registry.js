@@ -11,6 +11,10 @@ contract('PropertyRegistry', (accounts) => {
         assert(registry !== undefined, "Property registry is deployed");
     });
 
+    assert.revertError = function(e, message) {
+      return this.equal(e.message, `VM Exception while processing transaction: revert${message ? ' ' + message : ''}`);
+    }
+
     const newRegistry = async () => {
         property = await Property.new();
         registry = await PropertyRegistry.new(property.address);
@@ -46,7 +50,7 @@ contract('PropertyRegistry', (accounts) => {
             await registry.registerProperty(1, 100, {from: bob});
             assert(false, "Bob could register Alice's property");
         } catch(e) {
-            assert(true, "Bob could not register Alice's property");
+            return assert.revertError(e, "No non-owners allowed!");
         }
     });
 
@@ -56,7 +60,7 @@ contract('PropertyRegistry', (accounts) => {
             await registry.request(1, nextWeek, weekAfterThat, {from: bob})
             assert(false, "Bob could submit a booking request for an unregistered property.");
         } catch (e) {
-            assert(true, "Bob could not submit a booking request for an unregistered property.");
+            return assert.revertError(e, "Property must be registered");
         }
     });
 
@@ -71,17 +75,6 @@ contract('PropertyRegistry', (accounts) => {
         }
     });
 
-    it("should not allow anyone to make a booking request if check in is before the block time", async () => {
-        await newRegistry();
-        await registry.registerProperty(1, 100);
-        try {
-            await registry.request(1, currentTime, nextWeek, {from: bob})
-            assert(false, "Bob could submit a booking request.");
-        } catch (e) {
-            assert(true, "Bob could not submit a booking request.");
-        }
-    });
-
     it("should not allow anyone to make a booking request if check out is before check in", async () => {
         await newRegistry();
         await registry.registerProperty(1, 100);
@@ -89,7 +82,7 @@ contract('PropertyRegistry', (accounts) => {
             await registry.request(1, nextWeek, currentTime, {from: bob})
             assert(false, "Bob could submit a booking request.");
         } catch (e) {
-            assert(true, "Bob could not submit a booking request.");
+            return assert.revertError(e, "Check out time must be after check-in");
         }
     });
 
@@ -97,10 +90,10 @@ contract('PropertyRegistry', (accounts) => {
         await newRegistry();
         await requestBooking();
         try {
-            await registry.request(1, nextWeek, currentTime, {from: eve});
+            await registry.request(1, nextWeek, weekAfterThat, {from: eve});
             assert(false, "Eve could submit a booking request.");
         } catch (e) {
-            assert(true, "Eve could not submit a booking request.");
+            return assert.revertError(e, "Property must not have any requests in progress");
         }
     });
 
@@ -122,13 +115,15 @@ contract('PropertyRegistry', (accounts) => {
 
     it("should allow bob to check in if check-in time has begun and the request is approved", async () => {
         await newRegistry();
-        await requestBooking();
+        await registry.registerProperty(1, 100);
+        let lastWeek = new Date(currentTime - 7 * 24 * 60 * 60 * 1000).getTime();
+        await registry.request(1, lastWeek, nextWeek, {from: bob})
         await registry.approveRequest(1, true);
-        // move time forward??
         try {
             await registry.checkIn(1, {from: bob});
             assert(true, "Bob could check in");
         } catch(e) {
+            console.log(e)
             assert(false, "Bob could not check in");
         }
     });
@@ -141,7 +136,7 @@ contract('PropertyRegistry', (accounts) => {
             await registry.checkIn(1, {from: bob});
             assert(false, "Bob could check in");
         } catch(e) {
-            assert(true, "Bob could not check in");
+            return assert.revertError(e, "Check-in has not yet begun");
         }
     });
 

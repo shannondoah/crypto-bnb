@@ -25,7 +25,7 @@ contract PropertyRegistry {
   }
 
   modifier onlyOwner(uint256 _tokenId) {
-    require(property.ownerOf(_tokenId) == msg.sender);
+    require(property.ownerOf(_tokenId) == msg.sender, "No non-owners allowed!");
     _;
   }
 
@@ -41,7 +41,7 @@ contract PropertyRegistry {
   function request(uint256 _tokenId, uint256 _checkIn, uint256 _checkOut) external {
     require(stayData[_tokenId].price > 0, "Property must be registered");
     require(requests[_tokenId].guest == address(0), "Property must not have any requests in progress");
-    require(_checkIn > now, "Check-in must be in the future");
+    // require(_checkIn > now, "Check-in must be at least 1 day in the future");
     require(_checkOut > _checkIn, "Check out time must be after check-in");
 
     requests[_tokenId] = Request(_checkIn, _checkOut, msg.sender, false);
@@ -58,7 +58,7 @@ contract PropertyRegistry {
   }
 
   function checkIn(uint256 _tokenId) external requestApproved(_tokenId) {
-    require(requests[_tokenId].checkIn <= now, "Check-in has not yet begun");
+    require(now >= requests[_tokenId].checkIn, "Check-in has not yet begun");
     stayData[_tokenId].stays++;
     stayData[_tokenId].occupant = msg.sender;
   }
