@@ -27,10 +27,10 @@ contract('PropertyRegistry', (accounts) => {
     }
 
     const sevenDaysAfter = (time) => {
-        return new Date(time + 7 * 24 * 60 * 60 * 1000).getTime();
+        return new Date(time + (7* 3600 * 24)).getTime();
     }
 
-    const currentTime = Date.now();
+    const currentTime = Date.now() / 1000;
     const nextWeek = sevenDaysAfter(currentTime);
     const weekAfterThat = sevenDaysAfter(nextWeek);
 
@@ -116,8 +116,7 @@ contract('PropertyRegistry', (accounts) => {
     it("should allow bob to check in if check-in time has begun and the request is approved", async () => {
         await newRegistry();
         await registry.registerProperty(1, 100);
-        let lastWeek = new Date(currentTime - 7 * 24 * 60 * 60 * 1000).getTime();
-        await registry.request(1, lastWeek, nextWeek, {from: bob})
+        await registry.request(1, currentTime, nextWeek, {from: bob})
         await registry.approveRequest(1, true);
         try {
             await registry.checkIn(1, {from: bob});
@@ -148,34 +147,64 @@ contract('PropertyRegistry', (accounts) => {
             await registry.checkIn(1, {from: bob});
             assert(false, "Bob could check in");
         } catch(e) {
-            assert(true, "Bob could not check in");
+            return assert.revertError(e, "Request not approved for this sender");
         }
     });
 
     it("should not allow eve to check in at any time", async () => {
         await newRegistry();
-        await requestBooking();
+        await registry.registerProperty(1, 100);
+        await registry.request(1, currentTime, nextWeek, {from: bob})
         await registry.approveRequest(1, true);
-        // move the clock forward??
         try {
             await registry.checkIn(1, {from: eve});
             assert(false, "Eve could check in");
         } catch(e) {
-            assert(true, "Eve could not check in");
+            return assert.revertError(e, "Request not approved for this sender");
         }
     });
 
-    // it("should allow bob to check out", async () => {
+    it("should allow bob to check out", async () => {
+        await newRegistry();
+        await registry.registerProperty(1, 100);
+        await registry.request(1, currentTime, nextWeek, {from: bob})
+        await registry.approveRequest(1, true);
+        await registry.checkIn(1, {from: bob});
+        try {
+            await registry.checkOut(1, {from: bob});
+            assert(true, "Bob could check out");
+        } catch(e) {
+            assert(false, "Bob was not able to check out. He lives here now.");
+        }
+    });
 
-    // });
+    it("should not allow eve to check out", async () => {
+        await newRegistry();
+        await registry.registerProperty(1, 100);
+        await registry.request(1, currentTime, nextWeek, {from: bob})
+        await registry.approveRequest(1, true);
+        await registry.checkIn(1, {from: bob});
+        try {
+            await registry.checkOut(1, {from: eve});
+            assert(false, "Eve could check Bob out");
+        } catch(e) {
+            return assert.revertError(e, "Sender must be current occupant");
+        }
+    });
 
-    // it("should not allow eve to check out", async () => {
-
-    // });
-
-    // it("should allow eve to submit a request after bob has checked out", async () => {
-
-    // });
-
+    it("should allow eve to submit a request after bob has checked out", async () => {
+        await newRegistry();
+        await registry.registerProperty(1, 100);
+        await registry.request(1, currentTime, nextWeek, {from: bob})
+        await registry.approveRequest(1, true);
+        await registry.checkIn(1, {from: bob});
+        await registry.checkOut(1, {from: bob});
+        try {
+            await registry.request(1, nextWeek, weekAfterThat, {from: eve});
+            assert(true, "Eve was able to make a request after Bob was checked out");
+        } catch(e) {
+            assert(false, "Eve still couldn't submit a booking request.")
+        }
+    });
 });
 
