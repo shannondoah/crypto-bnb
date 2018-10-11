@@ -1,8 +1,10 @@
 pragma solidity ^0.4.24;
 
 import 'openzeppelin-solidity/contracts/token/ERC721/ERC721Basic.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract PropertyRegistry {
+  ERC20 propertyToken;
   ERC721Basic public property;
   mapping(uint256 => Data) public stayData;
   mapping(uint256 => Request) public requests;
@@ -20,8 +22,9 @@ contract PropertyRegistry {
     bool approved;
   }
 
-  constructor(address _property) public {
+  constructor(address _property, address _propertyToken) public {
     property = ERC721Basic(_property);
+    propertyToken = ERC20(_propertyToken);
   }
 
   modifier onlyOwner(uint256 _tokenId) {

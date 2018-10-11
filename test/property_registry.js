@@ -1,5 +1,6 @@
 const PropertyRegistry = artifacts.require("./PropertyRegistry.sol");
 const Property = artifacts.require("./Property.sol");
+const PropertyToken = artifacts.require("./PropertyToken.sol");
 
 contract('PropertyRegistry', (accounts) => {
 
@@ -17,7 +18,8 @@ contract('PropertyRegistry', (accounts) => {
 
     const newRegistry = async () => {
         property = await Property.new();
-        registry = await PropertyRegistry.new(property.address);
+        token = await PropertyToken.new();
+        registry = await PropertyRegistry.new(property.address, token.address);
         await property.createProperty();
     }
 
