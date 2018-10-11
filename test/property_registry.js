@@ -21,6 +21,8 @@ contract('PropertyRegistry', (accounts) => {
         token = await PropertyToken.new();
         registry = await PropertyRegistry.new(property.address, token.address);
         await property.createProperty();
+        await token.mint(bob, 1000);
+        await token.approve(registry.address, 100, { from: bob });
     }
 
     const registerProperty = async (tokenId, cost) => {
@@ -45,6 +47,19 @@ contract('PropertyRegistry', (accounts) => {
     const currentTime = Date.now() / 1000;
     const nextWeek = sevenDaysAfter(currentTime);
     const weekAfterThat = sevenDaysAfter(nextWeek);
+
+    it("should allow alice to mint Property Token for bob", async () => {
+        await newRegistry();
+        //get the balance of property tokens for bob
+        const balance = await token.balanceOf.call(bob);
+        assert(balance.toNumber() === 1000, "balance");
+    });
+
+    it("should allow bob to approve the property registry to use his tokens", async () => {
+        await newRegistry();
+        const tx = await token.approve(registry.address, 100, { from: bob });
+        assert(tx !== undefined, "property registry has not been approved");
+    });
 
     it("should allow alice to register her property", async () => {
         await newRegistry();
