@@ -37,7 +37,7 @@ contract('PropertyRegistry', (accounts) => {
 
     const requestApprovedBooking = async (tokenId, checkIn, checkOut, acc) => {
         await requestBooking(tokenId, checkIn, checkOut, acc);
-        await registry.approveRequest(tokenId, true);
+        await registry.approveRequest(tokenId, acc, true);
     }
 
     const sevenDaysAfter = (time) => {
@@ -111,27 +111,27 @@ contract('PropertyRegistry', (accounts) => {
         }
     });
 
-    it("should not allow anyone to make a booking request if there is already a request in progress", async () => {
+    it("should allow anyone to make a booking request if there is already a request in progress", async () => {
         await requestBooking(1, nextWeek, weekAfterThat, bob);
         try {
             await registry.request(1, nextWeek, weekAfterThat, {from: eve});
-            assert(false, "Eve could submit a booking request.");
+            assert(true, "Eve could submit a booking request.");
         } catch (e) {
-            return assert.revertError(e, "Property must not have any requests in progress");
+            assert(false, "Eve could not make a concurrent request");
         }
     });
 
     it("should allow alice to approve bob's request", async () => {
         await requestApprovedBooking(1, nextWeek, weekAfterThat, bob);
-        const request = await registry.requests.call(1);
-        assert(request[3] === true, "Alice could approve bob's request.");
+        const request = await registry.getRequest(1, bob);
+        assert(request[2] === true, "Alice could approve bob's request.");
     });
 
     it("should allow alice to reject bob's request", async () => {
         await requestBooking(1, nextWeek, weekAfterThat, bob);
-        await registry.approveRequest(1, false);
-        const request = await registry.requests.call(1);
-        assert(request[0].toString() === "0", "Alice rejected bob's request.");
+        await registry.approveRequest(1, bob, false);
+        const request = await registry.getRequest(1, bob);
+        assert(request[2] === false, "Alice rejected bob's request.");
     });
 
     it("should allow bob to check in if check-in time has begun and the request is approved", async () => {
@@ -157,7 +157,7 @@ contract('PropertyRegistry', (accounts) => {
 
     it("should not allow bob to check in if the request is not approved", async () => {
         await requestBooking(1, nextWeek, weekAfterThat, bob);
-        await registry.approveRequest(1, false);
+        await registry.approveRequest(1, bob, false);
         try {
             await registry.checkIn(1, {from: bob});
             assert(false, "Bob could check in");

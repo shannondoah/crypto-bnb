@@ -7,18 +7,19 @@ contract PropertyRegistry {
   ERC20 propertyToken;
   ERC721Basic public property;
   mapping(uint256 => Data) public stayData;
-  mapping(uint256 => Request) public requests;
 
   struct Data {
     uint256 price;
     uint256 stays;
     address occupant;
+    address[] requested;
+    address[] approved;
+    mapping (address => Request) requests;
   }
 
   struct Request {
     uint256 checkIn;
     uint256 checkOut;
-    address guest;
     bool approved;
   }
 
@@ -33,52 +34,59 @@ contract PropertyRegistry {
   }
 
   modifier requestApproved(uint256 _tokenId) {
-    require(requests[_tokenId].approved && requests[_tokenId].guest == msg.sender, "Request not approved for this sender");
+    require(stayData[_tokenId].requests[msg.sender].approved, "Request not approved for this sender");
     _;
   }
 
+  function getRequesters(uint256 _tokenId) view public returns(address[]) {
+    return stayData[_tokenId].requested;
+  }
+
+  function getRequest(uint256 _tokenId, address _requester) view public returns(uint256, uint256, bool) {
+    return (stayData[_tokenId].requests[_requester].checkIn, stayData[_tokenId].requests[_requester].checkOut, stayData[_tokenId].requests[_requester].approved);
+  }
+
   function registerProperty(uint256 _tokenId, uint256 _price) external onlyOwner(_tokenId) {
-    stayData[_tokenId] = Data(_price, 0, address(0));
+    stayData[_tokenId] = Data(_price, 0, address(0), new address[](0), new address[](0));
   }
 
   function request(uint256 _tokenId, uint256 _checkIn, uint256 _checkOut) external {
     require(stayData[_tokenId].price > 0, "Property must be registered");
-    require(requests[_tokenId].guest == address(0), "Property must not have any requests in progress");
-    // --- require(_checkIn > now, "Check-in must be at least 1 day in the future");
+    // STRETCH require(_checkIn > now, "Check-in must be at least 1 day in the future");
     require(_checkOut > _checkIn, "Check out time must be after check-in");
 
-    requests[_tokenId] = Request(_checkIn, _checkOut, msg.sender, false);
-    // --- should be able to put in a new request if an existing request is idle (check in time has passed)
+
+    stayData[_tokenId].requests[msg.sender] = Request(_checkIn, _checkOut, false);
+    stayData[_tokenId].requested.push(msg.sender);
   }
 
-  function approveRequest(uint256 _tokenId, bool _approved) external onlyOwner(_tokenId) {
+  function approveRequest(uint256 _tokenId, address _requester, bool _approved) external onlyOwner(_tokenId) {
     if(_approved) {
-      requests[_tokenId].approved = true;
+      stayData[_tokenId].requests[_requester].approved = true;
+      stayData[_tokenId].approved.push(_requester);
     } else {
-      delete requests[_tokenId];
+      delete stayData[_tokenId].requests[_requester];
+      // Delete from requested array?
     }
-    // --- should not be able to approve a check-in request for which the start time is now in the past
+    // STRETCH should not be able to approve a check-in request for which the start time is now in the past
   }
 
   function checkIn(uint256 _tokenId) external requestApproved(_tokenId) {
-    require(now >= requests[_tokenId].checkIn, "Check-in has not yet begun");
-    // --- stayData[_tokenId].stays++;
-
-    //REQUIRED: transfer tokens to propertyRegistry upon successful check in
-    //this == this contract address
+    require(now >= stayData[_tokenId].requests[msg.sender].checkIn, "Check-in has not yet begun");
     require(propertyToken.transferFrom(msg.sender, this, stayData[_tokenId].price));
-    stayData[_tokenId].occupant = requests[_tokenId].guest;
+
+    stayData[_tokenId].occupant = msg.sender;
+    stayData[_tokenId].stays++;
   }
 
   function checkOut(uint256 _tokenId) external {
     require(stayData[_tokenId].occupant == msg.sender, "Sender must be current occupant");
-    // require(now < stayData[_tokenId].checkOut);
-    // --- record if checkout is late, penalize occupant
-
-    //REQUIRED: transfer tokens to Alice upon successful check out
     require(propertyToken.transfer(property.ownerOf(_tokenId), stayData[_tokenId].price));
+    // require(now < stayData[_tokenId].checkOut);
+    // STRETCH implement some kind of late checkout to penalize occupant
 
-    delete requests[_tokenId];
+    delete stayData[_tokenId].requests[msg.sender];
+    // Delete from requested & approved arrays?
     stayData[_tokenId].occupant = address(0);
   }
 
