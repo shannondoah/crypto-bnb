@@ -262,5 +262,12 @@ contract('PropertyRegistry', (accounts) => {
             assert(false, "Eve still couldn't submit a booking request.")
         }
     });
+
+    // *** DATA GETTERS *** //
+    it("should get all the data for a particular stay", async () => {
+        await requestApprovedBooking(1, currentTime, nextWeek, bob)
+        const stayData = await registry.getStayData(1);
+        assert(stayData.length === 5, "stayData returns all non-mapping fields");
+    });
 });
 

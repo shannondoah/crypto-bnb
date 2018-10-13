@@ -45,12 +45,26 @@ contract PropertyRegistry {
     _;
   }
 
-  function getRequesters(uint256 _tokenId) view public returns(address[]) {
+  function getStayData(uint256 _tokenId) view external returns(uint256, uint256, address, address[], address[]) {
+    return (
+      stayData[_tokenId].price,
+      stayData[_tokenId].stays,
+      stayData[_tokenId].occupant,
+      stayData[_tokenId].requested,
+      stayData[_tokenId].approved
+    );
+  }
+
+  function getRequesters(uint256 _tokenId) view external returns(address[]) {
     return stayData[_tokenId].requested;
   }
 
-  function getRequest(uint256 _tokenId, address _requester) view public returns(uint256, uint256, bool) {
-    return (stayData[_tokenId].requests[_requester].checkIn, stayData[_tokenId].requests[_requester].checkOut, stayData[_tokenId].requests[_requester].approved);
+  function getRequest(uint256 _tokenId, address _requester) view external returns(uint256, uint256, bool) {
+    return (
+      stayData[_tokenId].requests[_requester].checkIn,
+      stayData[_tokenId].requests[_requester].checkOut,
+      stayData[_tokenId].requests[_requester].approved
+    );
   }
 
   function registerProperty(uint256 _tokenId, uint256 _price) external onlyOwner(_tokenId) {
