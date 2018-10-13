@@ -23,6 +23,13 @@ contract PropertyRegistry {
     bool approved;
   }
 
+  event Registered(uint256 indexed _tokenId);
+  event Approved(uint256 indexed _tokenId);
+  event Rejected(uint indexed _tokenId);
+  event Requested(uint256 indexed _tokenId);
+  event CheckIn(uint256 indexed _tokenId);
+  event CheckOut(uint256 indexed _tokenId);
+
   constructor(address _property, address _propertyToken) public {
     property = ERC721Basic(_property);
     propertyToken = ERC20(_propertyToken);
@@ -48,6 +55,8 @@ contract PropertyRegistry {
 
   function registerProperty(uint256 _tokenId, uint256 _price) external onlyOwner(_tokenId) {
     stayData[_tokenId] = Data(_price, 0, address(0), new address[](0), new address[](0));
+
+    emit Registered(_tokenId);
   }
 
   function request(uint256 _tokenId, uint256 _checkIn, uint256 _checkOut) external {
@@ -58,15 +67,19 @@ contract PropertyRegistry {
 
     stayData[_tokenId].requests[msg.sender] = Request(_checkIn, _checkOut, false);
     stayData[_tokenId].requested.push(msg.sender);
+    emit Requested(_tokenId);
   }
 
   function approveRequest(uint256 _tokenId, address _requester, bool _approved) external onlyOwner(_tokenId) {
     if(_approved) {
       stayData[_tokenId].requests[_requester].approved = true;
       stayData[_tokenId].approved.push(_requester);
+
+      emit Approved(_tokenId);
     } else {
       delete stayData[_tokenId].requests[_requester];
       // Delete from requested array?
+      emit Rejected(_tokenId);
     }
     // STRETCH should not be able to approve a check-in request for which the start time is now in the past
   }
@@ -77,6 +90,8 @@ contract PropertyRegistry {
 
     stayData[_tokenId].occupant = msg.sender;
     stayData[_tokenId].stays++;
+
+    emit CheckIn(_tokenId);
   }
 
   function checkOut(uint256 _tokenId) external {
@@ -88,6 +103,8 @@ contract PropertyRegistry {
     delete stayData[_tokenId].requests[msg.sender];
     // Delete from requested & approved arrays?
     stayData[_tokenId].occupant = address(0);
+
+    emit CheckOut(_tokenId);
   }
 
 }

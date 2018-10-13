@@ -16,13 +16,23 @@ contract('PropertyRegistry', (accounts) => {
       return this.equal(e.message, `VM Exception while processing transaction: revert${message ? ' ' + message : ''}`);
     }
 
+    assert.eventOfType = function(response, eventName) {
+        return this.equal(response.logs[0].event, eventName, eventName + ' event should fire.');
+    }
+
     const newRegistry = async () => {
         property = await Property.new();
-        token = await PropertyToken.new();
+        token    = await PropertyToken.new();
         registry = await PropertyRegistry.new(property.address, token.address);
+
         await property.createProperty();
-        await token.mint(bob, 1000);
-        await token.approve(registry.address, 100, { from: bob });
+        await mintTokens(bob);
+
+    }
+
+    const mintTokens = async (acc) => {
+        await token.mint(acc, 1000);
+        await token.approve(registry.address, 100, { from: acc });
     }
 
     const registerProperty = async (tokenId, cost) => {
@@ -44,13 +54,13 @@ contract('PropertyRegistry', (accounts) => {
         return new Date(time + (7* 3600 * 24)).getTime();
     }
 
-    const currentTime = Date.now() / 1000;
-    const nextWeek = sevenDaysAfter(currentTime);
+    const currentTime   = Date.now() / 1000;
+    const nextWeek      = sevenDaysAfter(currentTime);
     const weekAfterThat = sevenDaysAfter(nextWeek);
 
-    it("should allow alice to mint Property Token for bob", async () => {
+    // *** PROPERTY TOKENS *** //
+    it("should allow alice to mint property tokens for bob", async () => {
         await newRegistry();
-        //get the balance of property tokens for bob
         const balance = await token.balanceOf.call(bob);
         assert(balance.toNumber() === 1000, "balance");
     });
@@ -61,6 +71,7 @@ contract('PropertyRegistry', (accounts) => {
         assert(tx !== undefined, "property registry has not been approved");
     });
 
+    // *** PROPERTY REGISTRATION *** //
     it("should allow alice to register her property", async () => {
         await newRegistry();
         try {
@@ -69,6 +80,12 @@ contract('PropertyRegistry', (accounts) => {
         } catch(e) {
             assert(false, "Alice could not register her property");
         }
+    });
+
+    it("should emit a Registered event on property registration", async () => {
+        await newRegistry();
+        const tx = await registry.registerProperty(1, 100);
+        assert.eventOfType(tx, "Registered");
     });
 
     it("should not allow bob to register alice's property", async () => {
@@ -81,6 +98,7 @@ contract('PropertyRegistry', (accounts) => {
         }
     });
 
+    // *** BOOKING REQUESTS *** //
     it("should not allow anyone to make a booking request for an unregistered property", async () => {
         await newRegistry();
         try {
@@ -99,6 +117,12 @@ contract('PropertyRegistry', (accounts) => {
         } catch (e) {
             assert(false, "Bob could not submit a booking request.");
         }
+    });
+
+    it("should emit an event on successful request", async () => {
+        await registerProperty(1, 100);
+        const tx = await registry.request(1, nextWeek, weekAfterThat, {from: bob})
+        assert.eventOfType(tx, "Requested");
     });
 
     it("should not allow anyone to make a booking request if check out is before check in", async () => {
@@ -121,10 +145,17 @@ contract('PropertyRegistry', (accounts) => {
         }
     });
 
+    // *** REQUEST APPROVAL *** //
     it("should allow alice to approve bob's request", async () => {
         await requestApprovedBooking(1, nextWeek, weekAfterThat, bob);
         const request = await registry.getRequest(1, bob);
         assert(request[2] === true, "Alice could approve bob's request.");
+    });
+
+    it("should emit an event on approval", async () => {
+        await requestBooking(1, nextWeek, weekAfterThat, bob);
+        const tx = await registry.approveRequest(1, bob, true);
+        assert.eventOfType(tx, "Approved");
     });
 
     it("should allow alice to reject bob's request", async () => {
@@ -134,6 +165,13 @@ contract('PropertyRegistry', (accounts) => {
         assert(request[2] === false, "Alice rejected bob's request.");
     });
 
+    it("should emit an event on rejection", async () => {
+        await requestBooking(1, nextWeek, weekAfterThat, bob);
+        const tx = await registry.approveRequest(1, bob, false);
+        assert.eventOfType(tx, "Rejected");
+    });
+
+    // *** CHECK IN *** //
     it("should allow bob to check in if check-in time has begun and the request is approved", async () => {
         await requestApprovedBooking(1, currentTime, nextWeek, bob)
         try {
@@ -143,6 +181,12 @@ contract('PropertyRegistry', (accounts) => {
             console.log(e)
             assert(false, "Bob could not check in");
         }
+    });
+
+    it("should emit an event on check in", async () => {
+        await requestApprovedBooking(1, currentTime, nextWeek, bob);
+        const tx = await registry.checkIn(1, {from: bob});
+        assert.eventOfType(tx, "CheckIn");
     });
 
     it("should not allow bob to check in if check-in time has not begun", async () => {
@@ -176,6 +220,8 @@ contract('PropertyRegistry', (accounts) => {
         }
     });
 
+
+    // *** CHECK OUT *** //
     it("should allow bob to check out", async () => {
         await requestApprovedBooking(1, currentTime, nextWeek, bob);
         await registry.checkIn(1, {from: bob});
@@ -185,6 +231,13 @@ contract('PropertyRegistry', (accounts) => {
         } catch(e) {
             assert(false, "Bob was not able to check out. He lives here now.");
         }
+    });
+
+    it("should emit an event on check out", async () => {
+        await requestApprovedBooking(1, currentTime, nextWeek, bob);
+        await registry.checkIn(1, {from: bob});
+        const tx = await registry.checkOut(1, {from: bob});
+        assert.eventOfType(tx, "CheckOut");
     });
 
     it("should not allow eve to check out", async () => {
