@@ -1,5 +1,5 @@
 build
 contracts/.placeholder
 test/.placeholder
-build
+.DS_Store
 node_modules

@@ -1,0 +1,33 @@
+{
+  "name": "cryptobnb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "express.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "express": "^4.16.4",
+    "express-async-await": "^1.1.0",
+    "fs": "0.0.1-security",
+    "ganache-cli": "^6.1.8",
+    "node-fetch": "^2.2.0",
+    "openzeppelin-solidity": "^1.12.0",
+    "truffle-contract": "^3.0.6",
+    "truffle-flattener": "^1.2.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shannondoah/crypto-bnb.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shannondoah/crypto-bnb/issues"
+  },
+  "homepage": "https://github.com/shannondoah/crypto-bnb#readme"
+}
