@@ -13,6 +13,7 @@
     "ganache-cli": "^6.1.8",
     "node-fetch": "^2.2.0",
     "openzeppelin-solidity": "^1.12.0",
+    "pug": "^2.0.3",
     "truffle-contract": "^3.0.6",
     "truffle-flattener": "^1.2.9"
   },

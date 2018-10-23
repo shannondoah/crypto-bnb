@@ -8,7 +8,12 @@ else {
 }
 window.web3 = new Web3(web3Provider);
 
+let createProperty;
+
 const run = async () => {
+
+    const { accounts } = web3.eth;
+    const activeAccount = accounts[0];
 
     const getContract = async (json, web3 = window.web3) => {
         const contract = TruffleContract(json);
@@ -47,6 +52,22 @@ const run = async () => {
     watchEvents(tokenEvent);
     watchEvents(registryEvent);
 
+    createProperty = async () => {
+       try {
+            const tx = await propertyContract.createProperty({
+                from: activeAccount,
+                gas: 250000
+            });
+            console.log(tx);
+            console.log(`Property Created for ${activeAccount}`);
+        } catch(e) {
+            console.log(e);
+            alert('Error creating property', e)
+        }
+    }
+
 }
 
 run();
+
+document.getElementById('createProperty').setAttribute("onclick", "createProperty();");
