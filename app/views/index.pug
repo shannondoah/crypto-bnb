@@ -17,11 +17,12 @@ html
     div#property_mgmt
       h4 Create a Property
 
-      button#createProperty Create Now
+      button#create_property Create Now
 
       h4 Register a Property
-      form
-        input(placeholder="Property id")
+      form#register_property
+        input#token_id(placeholder="Property id")
+        input#cost(type="number", placeholder="Cost per night")
         button(type="submit") Register a property
 
     script

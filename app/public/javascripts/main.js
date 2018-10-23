@@ -84,8 +84,28 @@ const run = async () => {
         }
     }
 
+    registerProperty = async (e) => {
+        const $this = e.currentTarget;
+        const tokenId = $this.querySelector("#token_id").value;
+        const cost = $this.querySelector("#cost").value;
+
+        try {
+            const tx = await registryContract.registerProperty(tokenId, cost, {
+                from: activeAccount,
+                gas: 250000
+            });
+            console.log('Property registered.');
+        } catch(e) {
+            alert('Error registering property', e)
+        }
+    }
+
 }
 
 run();
 
-document.getElementById('createProperty').setAttribute("onclick", "createProperty();");
+document.getElementById('create_property').setAttribute("onclick", "createProperty();");
+
+document.getElementById('register_property').addEventListener("submit", async (e) => {
+    await registerProperty(e);
+});
