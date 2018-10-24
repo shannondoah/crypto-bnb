@@ -15,6 +15,9 @@ let propertyContract,
 let createProperty,
     registerProperty;
 
+const createEl = (el) => { return document.createElement(el); }
+const textNode = (text) => { return document.createTextNode(text); }
+
 const run = async () => {
 
     if(!web3.currentProvider.isMetaMask) {
@@ -66,10 +69,28 @@ const run = async () => {
                                 .then(results => { return results });
 
    for(i = 0; i < properties.length; i++) {
-        var box = document.createElement("div");
-        var name = document.createTextNode(`Property ${properties[i]["c"]}`);
-        box.appendChild(name);
-        document.getElementById("properties_container").appendChild(box);
+        const registeredPrice = await registryContract.getStayData
+                                .call(properties[i].toNumber())
+                                .then(results => { return results[0].toNumber() });
+
+        var container = createEl('div'),
+            title = createEl('h5'),
+            attrs = createEl('ul'),
+            tokenLi = createEl('li'),
+            priceLi = createEl('li');
+
+        var titleText = textNode("Property");
+        var tokenId = textNode(`ID: ${properties[i]["c"]}`);
+        var price = textNode(`Price: $${registeredPrice}`);
+
+        title.appendChild(titleText);
+        tokenLi.appendChild(tokenId);
+        priceLi.appendChild(price);
+        attrs.appendChild(tokenLi)
+        attrs.appendChild(priceLi);
+        container.appendChild(title);
+        container.appendChild(attrs);
+        document.getElementById("properties_container").appendChild(container);
    }
 
     createProperty = async () => {
